@@ -1,0 +1,61 @@
+### Segredos — Principio III da constituicao: nenhum segredo versionado ###
+*.pem
+*.p8
+*.p12
+*.jks
+*.key
+.env
+.env.*
+!.env.example
+# `certs/*` em vez de `certs/`: o git nao desce em diretorio excluido, e a negacao
+# abaixo nunca seria avaliada. Assim a pasta existe no clone e as chaves ficam fora.
+certs/*
+!certs/.gitkeep
+
+### Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+### IDE: IntelliJ ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### IDE: Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IDE: NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### IDE: VS Code ###
+.vscode/
+
+### Sistema operacional ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### Logs e relatorios locais ###
+*.log
+logs/
+/zap-report-local/
