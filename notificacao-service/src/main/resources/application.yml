@@ -1,0 +1,64 @@
+# notificacao-service — configuracao de runtime.
+# Sprint 0: o servico sobe vazio e responde em /actuator/health.
+# Valores sensiveis e enderecos vem do ambiente; os defaults servem para rodar fora do Compose.
+spring:
+  application:
+    name: notificacao-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/notificacao}
+    username: ${SPRING_DATASOURCE_USERNAME:app}
+    password: ${SPRING_DATASOURCE_PASSWORD:app}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # O schema pertence ao Flyway (Principio IV da constituicao): o Hibernate so confere.
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+  cloud:
+    discovery:
+      client:
+        # O starter do Resilience4j arrasta o Spring Cloud Commons, que registra contribuidores
+        # de health de service discovery. Este projeto nao tem registry (os servicos se falam por
+        # evento, nao por descoberta), e sem desligar isso o health check reporta UNKNOWN.
+        health-indicator:
+          enabled: false
+        composite-indicator:
+          enabled: false
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    properties:
+      mail:
+        smtp:
+          # Timeout explicito: sem ele, uma queda do SMTP travaria o envio de lembrete (Sprint 5).
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+    rabbit:
+      enabled: true
+
+logging:
+  pattern:
+    # consultaId e eventId no MDC: exigencia do Principio VII (rastrear um evento pelos 3 servicos).
+    level: "%5p [consultaId=%X{consultaId:-} eventId=%X{eventId:-}]"

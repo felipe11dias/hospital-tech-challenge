@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<!--
+		POM pai do Tech Challenge Fase 3 — Sistema Hospitalar.
+		Responsabilidade única: centralizar versões e agregar os módulos.
+		A versão do Spring Boot é fixada pela constituição do projeto
+		(.specify/memory/constitution.md, seção "Stack Obrigatória") e justificada
+		em docs/adr/ADR-007-spring-boot-4-2.md.
+	-->
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.2.0</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>br.com.fiap.hospital</groupId>
+	<artifactId>hospital-tech-challenge</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>hospital-tech-challenge</name>
+	<description>Backend hospitalar em microsservicos — Tech Challenge Fase 3 (POSTECH)</description>
+
+	<modules>
+		<module>agendamento-service</module>
+		<module>notificacao-service</module>
+		<module>historico-service</module>
+	</modules>
+
+	<properties>
+		<java.version>21</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<spring-cloud.version>2026.0.0</spring-cloud.version>
+		<graphql-extended-scalars.version>24.0</graphql-extended-scalars.version>
+		<awaitility.version>4.3.0</awaitility.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+			<!-- Scalar DateTime do GraphQL (usado por agendamento e historico a partir do Sprint 2) -->
+			<dependency>
+				<groupId>com.graphql-java</groupId>
+				<artifactId>graphql-java-extended-scalars</artifactId>
+				<version>${graphql-extended-scalars.version}</version>
+			</dependency>
+			<!-- Espera ativa em testes de mensageria (Sprint 3) -->
+			<dependency>
+				<groupId>org.awaitility</groupId>
+				<artifactId>awaitility</artifactId>
+				<version>${awaitility.version}</version>
+				<scope>test</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<!-- Testes: valem para todos os modulos, por exigencia do Principio II da constituicao -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<configuration>
+						<!-- Nomes de teste carregam o codigo do criterio de aceite (F2_CA3_...),
+						     por isso o padrao padrao do surefire nao basta. -->
+						<includes>
+							<include>**/*Test.java</include>
+							<include>**/*Tests.java</include>
+							<include>**/*IT.java</include>
+						</includes>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+
+</project>
