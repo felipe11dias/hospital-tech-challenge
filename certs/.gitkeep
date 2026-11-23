@@ -1,0 +1,4 @@
+# Esta pasta recebe o par de chaves RSA usado para assinar e verificar o JWT.
+#
+# Nada aqui e versionado, exceto este arquivo: o .gitignore bloqueia *.pem.
+# Gere as chaves seguindo a secao "Como rodar" do README antes de subir o ambiente.

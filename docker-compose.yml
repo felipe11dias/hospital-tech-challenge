@@ -1,0 +1,188 @@
+# Ambiente local completo do Tech Challenge Fase 3.
+#
+# `docker compose up --build` sobe: 3 servicos, 3 bancos PostgreSQL (um por servico, conforme o
+# Principio IV da constituicao), RabbitMQ com painel e Mailpit como SMTP de teste.
+#
+# Unico passo manual antes: gerar o par de chaves RSA (ver README). A chave privada entra por
+# volume e nunca e versionada (Principio III).
+
+name: hospital-tech-challenge
+
+services:
+
+  # ------------------------------------------------------------------ infraestrutura
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: hospital-rabbitmq
+    ports:
+      - "5672:5672"      # AMQP
+      - "15672:15672"    # painel de administracao: filas, bindings e DLQ
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [hospital]
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: hospital-mailpit
+    ports:
+      - "1025:1025"      # SMTP falso
+      - "8025:8025"      # caixa de entrada web: onde a confirmacao e o lembrete aparecem
+    networks: [hospital]
+
+  db-agendamento:
+    image: postgres:16
+    container_name: hospital-db-agendamento
+    environment:
+      POSTGRES_DB: agendamento
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-app}
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-agendamento-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d agendamento"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [hospital]
+
+  db-notificacao:
+    image: postgres:16
+    container_name: hospital-db-notificacao
+    environment:
+      POSTGRES_DB: notificacao
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-app}
+    ports:
+      - "5434:5432"
+    volumes:
+      - db-notificacao-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d notificacao"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [hospital]
+
+  db-historico:
+    image: postgres:16
+    container_name: hospital-db-historico
+    environment:
+      POSTGRES_DB: historico
+      POSTGRES_USER: ${DB_USER:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-app}
+    ports:
+      - "5435:5432"
+    volumes:
+      - db-historico-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-app} -d historico"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [hospital]
+
+  # ------------------------------------------------------------------ servicos
+
+  agendamento-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: agendamento-service
+    container_name: hospital-agendamento
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-agendamento:5432/agendamento
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-app}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-app}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # A partir do Sprint 1: par de chaves RSA montado em /app/certs (ver README).
+      JWT_PUBLIC_KEY: file:/app/certs/public.pem
+      JWT_PRIVATE_KEY: file:/app/certs/private.pem
+    volumes:
+      - ./certs:/app/certs:ro
+    depends_on:
+      db-agendamento:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      # A imagem JRE nao traz curl; /dev/tcp do bash confirma que a porta esta aceitando conexao.
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+    networks: [hospital]
+
+  notificacao-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: notificacao-service
+    container_name: hospital-notificacao
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-notificacao:5432/notificacao
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-app}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-app}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: "1025"
+    depends_on:
+      db-notificacao:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks: [hospital]
+
+  historico-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: historico-service
+    container_name: hospital-historico
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-historico:5432/historico
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-app}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-app}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # O historico so verifica o token: chave publica basta (ADR-002).
+      JWT_PUBLIC_KEY: file:/app/certs/public.pem
+    volumes:
+      - ./certs:/app/certs:ro
+    depends_on:
+      db-historico:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks: [hospital]
+
+networks:
+  hospital:
+    driver: bridge
+
+volumes:
+  db-agendamento-data:
+  db-notificacao-data:
+  db-historico-data:
