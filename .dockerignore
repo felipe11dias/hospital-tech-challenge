@@ -1,0 +1,17 @@
+# Fora do contexto de build: nada que a compilacao precise, e segredo nenhum entra na imagem.
+.git
+.github
+.idea
+.vscode
+.specify
+.claude
+docs
+specs
+postman
+certs
+**/target
+**/*.pem
+**/*.key
+.env
+.env.*
+*.md
