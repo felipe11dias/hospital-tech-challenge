@@ -1,0 +1,8 @@
+# historico-service — schema GraphQL.
+#
+# Sprint 0: apenas o campo minimo que o Spring for GraphQL exige para iniciar.
+# O contrato real (historicoPaciente, minhasConsultas) entra na Sprint 4 (specs/005), junto da spec que o define.
+type Query {
+  "Sonda de inicializacao. Removida quando o contrato real entrar."
+  ping: String
+}
